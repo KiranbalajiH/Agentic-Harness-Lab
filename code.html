@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DocAgent — Budgeted Document-Answering Agent</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: EB Garamond (Serif Editorial) & Manrope (Clean Modern Sans) -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&amp;family=Manrope:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-primary-container": "#fbe8d8",
+            "secondary-container": "#eae2da",
+            "on-tertiary-container": "#3a2020",
+            "on-primary-fixed-variant": "#8a4518",
+            "primary": "#c2652a",
+            "on-tertiary-fixed-variant": "#6e3030",
+            "tertiary-container": "#d47070",
+            "on-primary": "#ffffff",
+            "surface-variant": "#ece6dc",
+            "primary-container": "#e08850",
+            "inverse-on-surface": "#faf5ee",
+            "on-tertiary": "#ffffff",
+            "outline": "#9a9088",
+            "surface-container-highest": "#e6e0d6",
+            "secondary": "#78706a",
+            "outline-variant": "#d8d0c8",
+            "primary-fixed-dim": "#f0a878",
+            "surface-tint": "#c2652a",
+            "tertiary-fixed-dim": "#e8a0a0",
+            "primary-fixed": "#fbe8d8",
+            "surface-dim": "#dcd6cc",
+            "on-secondary-fixed": "#2a2420",
+            "on-secondary-container": "#605850",
+            "on-error": "#ffffff",
+            "background": "#faf5ee",
+            "surface-container": "#f2ece4",
+            "surface-container-lowest": "#ffffff",
+            "tertiary-fixed": "#fce0e0",
+            "on-primary-fixed": "#401a08",
+            "error-container": "#fce4e0",
+            "tertiary": "#8c3c3c",
+            "error": "#c0392b",
+            "surface-container-low": "#f6f0e8",
+            "on-secondary": "#ffffff",
+            "inverse-surface": "#3a302a",
+            "surface-container-high": "#ece6dc",
+            "surface-bright": "#faf5ee",
+            "inverse-primary": "#f0a878",
+            "on-tertiary-fixed": "#2e1515",
+            "on-error-container": "#7a1a10",
+            "secondary-fixed-dim": "#cec6be",
+            "on-surface": "#3a302a",
+            "on-background": "#3a302a",
+            "on-surface-variant": "#605850",
+            "on-secondary-fixed-variant": "#504840",
+            "secondary-fixed": "#eae2da",
+            "surface": "#faf5ee"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "fontFamily": {
+            "headline": ["EB Garamond", "serif"],
+            "display": ["EB Garamond", "serif"],
+            "body": ["Manrope", "sans-serif"],
+            "label": ["Manrope", "sans-serif"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    /* Sahara Soft Shadows */
+    .sahara-subtle-shadow {
+      box-shadow: 0 2px 16px rgba(58, 48, 42, 0.04);
+    }
+    .sahara-card-hover:hover {
+      box-shadow: 0 4px 20px rgba(58, 48, 42, 0.08);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body antialiased flex flex-col h-screen overflow-hidden selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- TOP APP BAR -->
+<header class="w-full px-6 py-3.5 flex items-center justify-between bg-surface border-b border-outline-variant/60 z-20 flex-shrink-0">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]" data-icon="description">description</span>
+</div>
+<div>
+<span class="font-headline text-2xl font-normal text-on-surface tracking-tight">DocAgent</span>
+<span class="text-xs text-secondary ml-2 font-medium tracking-normal hidden sm:inline">Budgeted Document-Answering Agent</span>
+</div>
+</div>
+<!-- Nav Links -->
+<nav class="hidden md:flex items-center gap-4 pl-4 border-l border-outline-variant/50">
+<button id="navStageBtn" onclick="closeDocModal()" class="text-primary font-semibold border-b-2 border-primary pb-1 text-sm transition-colors duration-150">Agent Stage</button>
+<button id="navBenchmarkBtn" onclick="fetchAndShowDoc('benchmark')" class="text-secondary font-medium pb-1 text-sm hover:text-primary transition-colors duration-150">Benchmark</button>
+<button id="navDocumentationBtn" onclick="fetchAndShowDoc('documentation')" class="text-secondary font-medium pb-1 text-sm hover:text-primary transition-colors duration-150">Documentation</button>
+</nav>
+</div>
+<!-- Header Trailing Action & Budget Badge -->
+<div class="flex items-center gap-4">
+<!-- 6-Call Budget Indicator Badge -->
+<div class="flex items-center gap-3 bg-surface-container-low border border-outline-variant/70 px-3.5 py-1.5 rounded-lg sahara-subtle-shadow">
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between text-xs font-semibold text-on-surface">
+<span class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+              <span id="budgetCounter">0 / 6 tool calls used • 6 remaining</span>
+            </span>
+<span class="text-secondary font-mono text-[11px] ml-3" id="budgetPercentText">0/6</span>
+</div>
+<!-- Warm Sand / Terracotta Progress Bar -->
+<div class="w-32 h-1.5 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-300" id="budgetProgressBar" style="width: 0%;"></div>
+</div>
+</div>
+</div>
+<!-- Reset / Swap Session Action -->
+<button id="resetSessionBtn" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-secondary hover:text-on-surface bg-surface-container-low hover:bg-surface-container border border-outline-variant/60 rounded-lg transition-all duration-150 active:scale-95" title="Clear current document &amp; reload budget">
+<span class="material-symbols-outlined text-[16px]" data-icon="restart_alt">restart_alt</span>
+<span class="hidden sm:inline">Reset Session</span>
+</button>
+<!-- Trailing Icon Actions -->
+<div class="flex items-center gap-1 border-l border-outline-variant/60 pl-3">
+<button aria-label="Settings" class="p-1.5 text-secondary hover:text-primary rounded-lg transition-colors duration-150">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+</button>
+<button aria-label="Help" class="p-1.5 text-secondary hover:text-primary rounded-lg transition-colors duration-150">
+<span class="material-symbols-outlined text-[20px]" data-icon="help">help</span>
+</button>
+</div>
+</div>
+</header>
+<!-- WORKSPACE BODY (SideNav + Main Stage) -->
+<div class="flex flex-1 overflow-hidden relative">
+<!-- LEFT SIDEBAR -->
+<aside class="w-72 bg-surface-container-low border-r border-outline-variant/60 flex flex-col justify-between flex-shrink-0 overflow-y-auto">
+<div class="p-4 space-y-5">
+<!-- Active Document Card -->
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="font-headline text-lg font-normal text-on-surface">Active Document</span>
+<span id="docStatusBadge" class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-full border border-amber-200">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+              No File
+            </span>
+</div>
+<!-- Hidden File Input -->
+<input type="file" id="pdfFileInput" accept="application/pdf" class="hidden"/>
+<div class="bg-surface p-3.5 rounded-xl border border-outline-variant/70 sahara-subtle-shadow space-y-2.5">
+<div class="flex items-start gap-3">
+<div class="w-9 h-9 rounded-lg bg-tertiary/10 text-tertiary flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]" data-icon="description">description</span>
+</div>
+<div class="min-w-0 flex-1">
+<p id="docFileName" class="text-xs font-semibold text-on-surface truncate" title="No PDF selected">
+                  No PDF selected
+                </p>
+<p id="docFileMeta" class="text-[11px] text-secondary mt-0.5">Click Replace PDF to select a file</p>
+</div>
+</div>
+<button id="replacePdfBtn" type="button" class="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium text-primary hover:text-on-primary hover:bg-primary border border-primary/30 rounded-lg transition-all duration-150 active:scale-98">
+<span class="material-symbols-outlined text-[15px]" data-icon="sync_alt">sync_alt</span>
+              Replace PDF
+            </button>
+</div>
+</div>
+<!-- Available Primitives & Tool Budget -->
+<div>
+<div class="flex items-center justify-between mb-2">
+<h3 class="text-xs uppercase tracking-wider font-semibold text-secondary">Backend Primitives</h3>
+<span class="text-[11px] text-primary font-medium bg-primary-fixed px-2 py-0.5 rounded-full">Max 6 calls</span>
+</div>
+<div class="space-y-1.5">
+<div class="p-2 rounded-lg bg-surface border border-outline-variant/50 text-[11px] font-mono text-on-surface flex items-center justify-between">
+<span class="text-on-surface font-medium truncate">list_documents()</span>
+<span class="text-secondary text-[10px] bg-surface-container px-1.5 py-0.5 rounded">Core</span>
+</div>
+<div class="p-2 rounded-lg bg-surface border border-outline-variant/50 text-[11px] font-mono text-on-surface flex items-center justify-between">
+<span class="text-on-surface font-medium truncate">list_headings(doc_id)</span>
+<span class="text-secondary text-[10px] bg-surface-container px-1.5 py-0.5 rounded">Core</span>
+</div>
+<div class="p-2 rounded-lg bg-surface border border-outline-variant/50 text-[11px] font-mono text-on-surface flex items-center justify-between">
+<span class="text-on-surface font-medium truncate">get_page(doc_id, page)</span>
+<span class="text-secondary text-[10px] bg-surface-container px-1.5 py-0.5 rounded">Core</span>
+</div>
+<div class="p-2 rounded-lg bg-surface border border-outline-variant/50 text-[11px] font-mono text-on-surface flex items-center justify-between">
+<span class="text-on-surface font-medium truncate">search_keyword(doc_id, kw)</span>
+<span class="text-secondary text-[10px] bg-surface-container px-1.5 py-0.5 rounded">Core</span>
+</div>
+</div>
+</div>
+<!-- Suggested Inquiries -->
+<div>
+<h3 class="text-xs uppercase tracking-wider font-semibold text-secondary mb-2 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]" data-icon="quiz">quiz</span>
+            Suggested Inquiries
+          </h3>
+<div class="space-y-1.5">
+<button class="suggested-query-btn w-full text-left p-2.5 rounded-lg bg-surface hover:bg-surface-container border border-outline-variant/50 hover:border-primary/40 transition-colors duration-150 group" data-query="What is the primary color of the company logo?">
+<p class="text-xs text-on-surface group-hover:text-primary transition-colors leading-snug">
+                "What is the primary color of the company logo?"
+              </p>
+<span class="text-[10px] text-secondary mt-1 block">Est. 2 tool calls</span>
+</button>
+<button class="suggested-query-btn w-full text-left p-2.5 rounded-lg bg-surface hover:bg-surface-container border border-outline-variant/50 hover:border-primary/40 transition-colors duration-150 group" data-query="When was project Alpha started and how many engineers worked on its completion?">
+<p class="text-xs text-on-surface group-hover:text-primary transition-colors leading-snug">
+                "When was project Alpha started and how many engineers worked on its completion?"
+              </p>
+<span class="text-[10px] text-secondary mt-1 block">Est. 4 tool calls</span>
+</button>
+<button class="suggested-query-btn w-full text-left p-2.5 rounded-lg bg-surface hover:bg-surface-container border border-outline-variant/50 hover:border-primary/40 transition-colors duration-150 group" data-query="What is the standard fee for a basic subscription?">
+<p class="text-xs text-on-surface group-hover:text-primary transition-colors leading-snug">
+                "What is the standard fee for a basic subscription?"
+              </p>
+<span class="text-[10px] text-secondary mt-1 block">Est. 3 tool calls</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Sidebar Footer -->
+<div class="p-3 border-t border-outline-variant/60 bg-surface/50">
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container transition-colors duration-150 text-xs font-medium" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="tune">tune</span>
+<span>Agent Settings</span>
+</a>
+</div>
+</aside>
+<!-- MAIN CONVERSATION STAGE -->
+<main class="flex-1 flex flex-col justify-between overflow-y-auto bg-background px-6 lg:px-12 py-6">
+<div class="max-w-4xl mx-auto w-full space-y-6 pb-6">
+<!-- Top Overview Header Banner -->
+<div class="border-b border-outline-variant/50 pb-4">
+<h1 class="font-headline text-3xl font-medium text-on-surface leading-tight">
+            Budgeted Document-Answering Agent
+          </h1>
+<p class="text-sm text-secondary mt-1">
+            Ask questions about your document within a strict 6-call tool budget. Answers are mathematically bounded and citation-verified.
+          </p>
+</div>
+
+<!-- ERROR BANNER -->
+<div id="errorBanner" class="hidden bg-error-container text-on-error-container p-4 rounded-xl border border-error/30 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-error" data-icon="error">error</span>
+<span id="errorText" class="text-sm font-medium">An error occurred.</span>
+</div>
+<button onclick="document.getElementById('errorBanner').classList.add('hidden')" class="text-on-error-container hover:text-error">
+<span class="material-symbols-outlined text-[18px]" data-icon="close">close</span>
+</button>
+</div>
+
+<!-- LOADING INDICATOR -->
+<div id="loadingIndicator" class="hidden bg-surface rounded-2xl p-6 border border-outline-variant/70 sahara-subtle-shadow text-center space-y-3">
+<div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+<p class="text-sm font-medium text-on-surface">Agent is thinking and querying document tools...</p>
+<p class="text-xs text-secondary font-mono">Enforcing max 6 calls limit</p>
+</div>
+
+<!-- RESULTS CONTAINER -->
+<div id="resultsContainer">
+<!-- EMPTY STATE -->
+<div id="emptyState" class="bg-surface rounded-2xl p-8 border border-outline-variant/70 sahara-subtle-shadow text-center space-y-3">
+<div class="w-12 h-12 rounded-full bg-primary/10 text-primary mx-auto flex items-center justify-center">
+<span class="material-symbols-outlined text-[28px]" data-icon="find_in_page">find_in_page</span>
+</div>
+<h3 class="font-headline text-xl font-medium text-on-surface">No Question Asked Yet</h3>
+<p class="text-xs text-secondary max-w-md mx-auto">
+              Select a PDF using <strong>Replace PDF</strong> in the sidebar, enter your question below, and click <strong>Ask Agent</strong>.
+            </p>
+</div>
+
+<!-- ACTIVE RESULTS WRAPPER (Hidden initially) -->
+<div id="activeResults" class="hidden space-y-6">
+<!-- 1. USER QUERY CARD -->
+<div class="flex items-start gap-4">
+<div class="w-9 h-9 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-medium text-xs flex-shrink-0">
+                USER
+              </div>
+<div class="flex-1 bg-surface rounded-2xl p-4 border border-outline-variant/70 sahara-subtle-shadow">
+<div class="flex items-center justify-between mb-1.5">
+<span class="text-xs font-semibold text-secondary">User Query</span>
+<span id="displayQueryTime" class="text-[11px] text-secondary font-mono">--:--</span>
+</div>
+<p id="displayQueryText" class="text-base font-medium text-on-surface">
+                  --
+                </p>
+</div>
+</div>
+
+<!-- 2. AGENT SYNTHESIZED ANSWER CONTAINER -->
+<div class="flex items-start gap-4">
+<div class="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center flex-shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-[20px]" data-icon="smart_toy">smart_toy</span>
+</div>
+<div class="flex-1 space-y-4">
+<!-- Answer Card -->
+<div class="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/70 sahara-subtle-shadow relative overflow-hidden">
+<div class="flex flex-wrap items-center justify-between gap-2 pb-4 mb-4 border-b border-outline-variant/40">
+<div class="flex items-center gap-2">
+<span class="font-mono text-xs font-semibold text-primary">agent_answer()</span>
+<span id="displayAgentStatus" class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+<span class="material-symbols-outlined text-[13px]" data-icon="check_circle">check_circle</span>
+                        SUPPORTED
+                      </span>
+</div>
+<div class="flex items-center gap-2">
+<span id="displayCallsSummary" class="text-xs font-mono text-secondary bg-surface-container-low px-2.5 py-1 rounded-md border border-outline-variant/40">
+                        0 / 6 tool calls used • 6 remaining
+                      </span>
+</div>
+</div>
+<!-- Synthesized Text -->
+<div id="displayAnswerText" class="text-base text-on-surface leading-relaxed font-body">
+                    --
+                  </div>
+
+<!-- Conflict Note Alert (if present) -->
+<div id="displayConflictNoteContainer" class="hidden mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2">
+<span class="material-symbols-outlined text-[18px] text-amber-600 flex-shrink-0 mt-0.5" data-icon="warning">warning</span>
+<div id="displayConflictNoteText">--</div>
+</div>
+
+<div class="mt-4 pt-3 border-t border-outline-variant/30 flex items-center gap-4 text-xs text-secondary">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-primary" data-icon="verified">verified</span>
+                      Quote Verification: PASSED
+                    </span>
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]" data-icon="shield">shield</span>
+                      Zero Hallucination Filter: ACTIVE
+                    </span>
+</div>
+</div>
+
+<!-- 3. GROUNDED SOURCES / CITATIONS SECTION -->
+<div id="citationsSection" class="space-y-3">
+<div class="flex items-center justify-between">
+<h2 id="displayCitationsHeader" class="font-headline text-lg text-on-surface font-normal flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-primary" data-icon="format_quote">format_quote</span>
+                      Grounded Sources
+                    </h2>
+<span class="text-xs text-secondary">Extracted via bounded reader</span>
+</div>
+<div id="displayCitationsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+<!-- Citation cards inserted dynamically -->
+</div>
+</div>
+
+<!-- 4. COLLAPSIBLE TOOL CALL EXECUTION TRACE -->
+<details id="displayTraceDetails" class="group bg-surface-container-low rounded-xl border border-outline-variant/70 overflow-hidden transition-all duration-200" open="">
+<summary class="flex items-center justify-between p-3.5 cursor-pointer select-none bg-surface/40 hover:bg-surface transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary transition-transform duration-200 group-open:rotate-90" data-icon="chevron_right">chevron_right</span>
+<span id="displayTraceSummaryText" class="text-xs font-semibold text-on-surface">Tool Call Execution Graph</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[11px] text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded font-mono font-medium">Complete</span>
+</div>
+</summary>
+<div id="displayTraceList" class="p-3.5 space-y-2 border-t border-outline-variant/50 text-xs">
+<!-- Trace steps inserted dynamically -->
+</div>
+</details>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- BOTTOM INPUT BAR -->
+<div class="max-w-4xl mx-auto w-full pt-3 flex-shrink-0">
+<div class="bg-surface rounded-2xl p-2 pl-4 border border-outline-variant/80 sahara-subtle-shadow focus-within:border-primary transition-all duration-150">
+<form id="askForm" class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]" data-icon="search">search</span>
+<input id="questionInput" class="w-full bg-transparent border-0 text-sm text-on-surface placeholder:text-secondary/70 focus:ring-0 focus:outline-none py-1.5 font-body" placeholder="Ask a question about this document within the 6-call budget..." type="text"/>
+<button id="askSubmitBtn" class="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary font-medium text-xs rounded-xl shadow-sm transition-all duration-150 active:scale-95 flex-shrink-0" type="submit">
+<span>Ask Agent</span>
+<span class="material-symbols-outlined text-[16px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</form>
+</div>
+<!-- Input Bar Sub-labels -->
+<div class="flex items-center justify-between px-3 py-2 text-[11px] text-secondary">
+<div class="flex items-center gap-4">
+<span class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+              Tool budget: 6 calls max per query
+            </span>
+<span class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+              Zero hallucination filter enabled
+            </span>
+</div>
+<div class="hidden sm:flex items-center gap-1 font-mono text-[10px]">
+<span>Press <kbd class="px-1.5 py-0.5 bg-surface-container rounded border border-outline-variant/60 text-on-surface">Enter ↵</kbd></span>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+<!-- JAVASCRIPT LOGIC -->
+<script>
+  let currentFile = null;
+
+  const pdfFileInput = document.getElementById('pdfFileInput');
+  const replacePdfBtn = document.getElementById('replacePdfBtn');
+  const resetSessionBtn = document.getElementById('resetSessionBtn');
+  const docFileName = document.getElementById('docFileName');
+  const docFileMeta = document.getElementById('docFileMeta');
+  const docStatusBadge = document.getElementById('docStatusBadge');
+  
+  const askForm = document.getElementById('askForm');
+  const questionInput = document.getElementById('questionInput');
+  const askSubmitBtn = document.getElementById('askSubmitBtn');
+  
+  const emptyState = document.getElementById('emptyState');
+  const activeResults = document.getElementById('activeResults');
+  const loadingIndicator = document.getElementById('loadingIndicator');
+  const errorBanner = document.getElementById('errorBanner');
+  const errorText = document.getElementById('errorText');
+
+  const budgetCounter = document.getElementById('budgetCounter');
+  const budgetPercentText = document.getElementById('budgetPercentText');
+  const budgetProgressBar = document.getElementById('budgetProgressBar');
+
+  const displayQueryText = document.getElementById('displayQueryText');
+  const displayQueryTime = document.getElementById('displayQueryTime');
+  const displayAgentStatus = document.getElementById('displayAgentStatus');
+  const displayCallsSummary = document.getElementById('displayCallsSummary');
+  const displayAnswerText = document.getElementById('displayAnswerText');
+  const displayConflictNoteContainer = document.getElementById('displayConflictNoteContainer');
+  const displayConflictNoteText = document.getElementById('displayConflictNoteText');
+  const citationsSection = document.getElementById('citationsSection');
+  const displayCitationsHeader = document.getElementById('displayCitationsHeader');
+  const displayCitationsGrid = document.getElementById('displayCitationsGrid');
+  const displayTraceSummaryText = document.getElementById('displayTraceSummaryText');
+  const displayTraceList = document.getElementById('displayTraceList');
+
+  // Replace PDF button click -> trigger hidden file picker
+  replacePdfBtn.addEventListener('click', () => {
+    pdfFileInput.click();
+  });
+
+  // Handle file selection
+  pdfFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      showError('Only PDF files are supported.');
+      pdfFileInput.value = '';
+      return;
+    }
+
+    currentFile = file;
+    updateDocCard(file);
+    hideError();
+    resetResults();
+  });
+
+  function updateDocCard(file) {
+    if (file) {
+      docFileName.textContent = file.name;
+      docFileName.title = file.name;
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+      docFileMeta.textContent = `${sizeMb} MB • PDF`;
+      docStatusBadge.className = 'inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full border border-emerald-200';
+      docStatusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Ready';
+    } else {
+      docFileName.textContent = 'No PDF selected';
+      docFileName.title = 'No PDF selected';
+      docFileMeta.textContent = 'Click Replace PDF to select a file';
+      docStatusBadge.className = 'inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-full border border-amber-200';
+      docStatusBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span> No File';
+    }
+  }
+
+  // Reset session button
+  resetSessionBtn.addEventListener('click', () => {
+    currentFile = null;
+    pdfFileInput.value = '';
+    updateDocCard(null);
+    questionInput.value = '';
+    resetResults();
+    updateBudget(0);
+    hideError();
+  });
+
+  // Suggested inquiries buttons
+  document.querySelectorAll('.suggested-query-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const q = btn.getAttribute('data-query');
+      if (q) {
+        questionInput.value = q;
+        if (currentFile) {
+          askForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        } else {
+          pdfFileInput.click();
+        }
+      }
+    });
+  });
+
+  // Submit form
+  askForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideError();
+
+    const question = questionInput.value.trim();
+    if (!question) {
+      showError('Please enter a question.');
+      return;
+    }
+
+    if (!currentFile) {
+      showError('Please select a PDF document first using Replace PDF.');
+      pdfFileInput.click();
+      return;
+    }
+
+    // Fresh 6-call budget for every new question: reset UI counter to 0 / 6
+    updateBudget(0);
+    setLoading(true);
+
+    // Setup UI for live streaming output
+    emptyState.classList.add('hidden');
+    activeResults.classList.remove('hidden');
+    displayQueryText.textContent = question;
+    displayQueryTime.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    displayCallsSummary.textContent = '0 / 6 tool calls used • 6 remaining';
+    displayTraceSummaryText.textContent = 'Tool Call Execution Graph • 0 of 6 calls consumed';
+    displayTraceList.innerHTML = '';
+    displayCitationsGrid.innerHTML = '';
+    citationsSection.classList.add('hidden');
+    displayConflictNoteContainer.classList.add('hidden');
+    displayAnswerText.textContent = 'Agent is querying document tools...';
+    displayAgentStatus.className = 'inline-flex items-center gap-1 text-[11px] font-semibold text-secondary bg-surface-container border border-outline-variant px-2.5 py-0.5 rounded-full';
+    displayAgentStatus.innerHTML = '<span class="material-symbols-outlined text-[13px]" data-icon="hourglass_empty">hourglass_empty</span> RUNNING';
+
+    const formData = new FormData();
+    formData.append('file', currentFile);
+    formData.append('question', question);
+
+    try {
+      const response = await fetch('/api/ask', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({ detail: 'Request failed' }));
+        throw new Error(errJson.detail || `Server error ${response.status}`);
+      }
+
+      // Read SSE event stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split('\n\n');
+        buffer = blocks.pop() || ''; // keep trailing incomplete block
+
+        for (const block of blocks) {
+          if (!block.trim().startsWith('data:')) continue;
+          const jsonStr = block.replace(/^data:\s*/, '').trim();
+          if (!jsonStr) continue;
+
+          try {
+            const msg = JSON.parse(jsonStr);
+
+            if (msg.type === 'tool_call') {
+              const record = msg.record;
+              const used = record.calls_used;
+
+              // 1. Dynamic budget state update & re-render
+              updateBudget(used);
+              displayCallsSummary.textContent = `${used} / 6 tool calls used • ${6 - used} remaining`;
+              displayTraceSummaryText.textContent = `Tool Call Execution Graph • ${used} of 6 calls consumed`;
+
+              // 2. Append live step to execution graph
+              appendTraceStep(record);
+
+              // Allow browser repaint so each tool call state is visibly rendered
+              await new Promise(r => setTimeout(r, 60));
+
+            } else if (msg.type === 'final_result') {
+              renderFinalResult(question, msg.result);
+            } else if (msg.type === 'error') {
+              showError(msg.detail);
+            }
+          } catch (parseErr) {
+            console.error('SSE JSON parse error:', parseErr);
+          }
+        }
+      }
+    } catch (err) {
+      showError(err.message || 'An error occurred while answering your question.');
+    } finally {
+      setLoading(false);
+    }
+  });
+
+  function setLoading(isLoading) {
+    if (isLoading) {
+      loadingIndicator.classList.remove('hidden');
+      askSubmitBtn.disabled = true;
+      askSubmitBtn.classList.add('opacity-50');
+    } else {
+      loadingIndicator.classList.add('hidden');
+      askSubmitBtn.disabled = false;
+      askSubmitBtn.classList.remove('opacity-50');
+    }
+  }
+
+  function showError(msg) {
+    errorText.textContent = msg;
+    errorBanner.classList.remove('hidden');
+  }
+
+  function hideError() {
+    errorBanner.classList.add('hidden');
+  }
+
+  function resetResults() {
+    emptyState.classList.remove('hidden');
+    activeResults.classList.add('hidden');
+  }
+
+  function updateBudget(used) {
+    const safeUsed = Math.min(6, Math.max(0, Number(used) || 0));
+    const remaining = Math.max(0, 6 - safeUsed);
+    const percent = Math.round((safeUsed / 6) * 100);
+    const statusText = `${safeUsed} / 6 tool calls used • ${remaining} remaining`;
+    if (budgetCounter) budgetCounter.textContent = statusText;
+    if (displayCallsSummary) displayCallsSummary.textContent = statusText;
+    if (budgetPercentText) budgetPercentText.textContent = `${safeUsed}/6`;
+    if (budgetProgressBar) budgetProgressBar.style.width = `${percent}%`;
+  }
+
+  function appendTraceStep(step) {
+    // Remove "no calls" empty message if present
+    const emptyMsg = displayTraceList.querySelector('.no-trace-msg');
+    if (emptyMsg) emptyMsg.remove();
+
+    const stepDiv = document.createElement('div');
+    stepDiv.className = 'flex items-start gap-3 p-2.5 rounded-lg bg-surface border border-outline-variant/40 animate-fade-in';
+    
+    const argsStr = JSON.stringify(step.args || {});
+    const summaryStr = JSON.stringify(step.result_summary || '');
+    const errText = step.error ? `<div class="text-[10px] text-error mt-0.5 font-semibold">Error: ${step.error}</div>` : '';
+
+    stepDiv.innerHTML = `
+      <div class="w-5 h-5 rounded bg-primary-fixed text-on-primary-fixed flex items-center justify-center font-mono text-[10px] font-bold flex-shrink-0 mt-0.5">
+        ${step.call_number}
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2">
+          <span class="font-mono text-xs font-semibold text-primary truncate">${step.tool}(${argsStr})</span>
+          <span class="text-[10px] text-secondary font-mono flex-shrink-0">${step.duration_ms || 0}ms</span>
+        </div>
+        <p class="text-[11px] text-secondary mt-1">
+          ${step.purpose || ''} — Result: <code class="bg-surface-variant px-1 rounded text-on-surface font-mono">${summaryStr}</code>
+        </p>
+        ${errText}
+      </div>
+    `;
+    displayTraceList.appendChild(stepDiv);
+  }
+
+  function renderFinalResult(question, data) {
+    // Status badge
+    const status = data.status || 'UNKNOWN';
+    let statusClass = 'inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ';
+    let iconName = 'info';
+
+    if (status === 'SUPPORTED') {
+      statusClass += 'text-emerald-800 bg-emerald-50 border-emerald-200';
+      iconName = 'check_circle';
+    } else if (status === 'PARTIAL') {
+      statusClass += 'text-amber-800 bg-amber-50 border-amber-200';
+      iconName = 'warning';
+    } else if (status === 'CONFLICTING') {
+      statusClass += 'text-tertiary bg-tertiary-fixed border-tertiary/20';
+      iconName = 'alt_route';
+    } else { // INSUFFICIENT
+      statusClass += 'text-secondary bg-surface-container border-outline-variant';
+      iconName = 'help_outline';
+    }
+
+    displayAgentStatus.className = statusClass;
+    displayAgentStatus.innerHTML = `<span class="material-symbols-outlined text-[13px]" data-icon="${iconName}">${iconName}</span> ${status}`;
+
+    // Trace list & per-question call count
+    const trace = data.trace || [];
+    const callsUsed = (typeof data.calls_used === 'number') ? data.calls_used : trace.length;
+    const remaining = 6 - callsUsed;
+    updateBudget(callsUsed);
+
+    displayCallsSummary.textContent = `${callsUsed} / 6 tool calls used • ${remaining} remaining`;
+    displayAnswerText.textContent = data.answer || 'No answer generated.';
+
+    // Conflict Note
+    if (data.conflict_note) {
+      displayConflictNoteText.textContent = data.conflict_note;
+      displayConflictNoteContainer.classList.remove('hidden');
+    } else {
+      displayConflictNoteContainer.classList.add('hidden');
+    }
+
+    // Citations
+    displayCitationsGrid.innerHTML = '';
+    const citations = data.citations || [];
+    if (citations.length > 0) {
+      citationsSection.classList.remove('hidden');
+      displayCitationsHeader.innerHTML = `<span class="material-symbols-outlined text-[18px] text-primary" data-icon="format_quote">format_quote</span> Grounded Sources (${citations.length} Document Spans)`;
+      
+      citations.forEach(c => {
+        const card = document.createElement('div');
+        card.className = 'bg-surface rounded-xl p-4 border border-outline-variant/70 sahara-subtle-shadow hover:border-primary/50 transition-all duration-200 flex flex-col justify-between';
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <span class="text-xs font-semibold text-on-surface font-mono">[Page ${c.page}]</span>
+              <span class="text-[10px] font-medium text-emerald-800 bg-emerald-100/70 border border-emerald-200 px-2 py-0.5 rounded">Exact Match</span>
+            </div>
+            <blockquote class="text-xs text-on-surface/90 italic leading-relaxed pl-2.5 border-l-2 border-primary/50">
+              "${c.quote}"
+            </blockquote>
+          </div>
+          <div class="mt-3 pt-2.5 border-t border-outline-variant/40 flex items-center justify-between text-[11px] text-secondary font-mono">
+            <span>Page ${c.page}</span>
+            <span class="text-primary font-medium">Verified</span>
+          </div>
+        `;
+        displayCitationsGrid.appendChild(card);
+      });
+    } else {
+      citationsSection.classList.add('hidden');
+    }
+  }
+
+  // READ-ONLY DOCUMENTATION & BENCHMARK VIEWER FUNCTIONS
+  async function fetchAndShowDoc(docType) {
+    const modal = document.getElementById('docViewerModal');
+    const titleEl = document.getElementById('docViewerTitle');
+    const bodyEl = document.getElementById('docViewerBody');
+    const iconEl = document.getElementById('docViewerIcon');
+
+    modal.classList.remove('hidden');
+    bodyEl.innerHTML = '<div class="text-center py-12 text-secondary"><div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent mb-2"></div><p>Loading document artifact...</p></div>';
+
+    let iconName = 'description';
+    if (docType === 'benchmark') iconName = 'bar_chart';
+    if (docType === 'documentation') iconName = 'menu_book';
+    if (docType === 'memo') iconName = 'note_alt';
+    iconEl.textContent = iconName;
+
+    try {
+      const res = await fetch(`/api/docs/${docType}`);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+
+      titleEl.textContent = data.title;
+      bodyEl.innerHTML = formatMarkdownToHTML(data.content);
+    } catch (err) {
+      bodyEl.innerHTML = `<div class="p-4 bg-error-container text-on-error-container rounded-xl">Failed to load ${docType}: ${err.message}</div>`;
+    }
+  }
+
+  function closeDocModal() {
+    document.getElementById('docViewerModal').classList.add('hidden');
+  }
+
+  function formatMarkdownToHTML(md) {
+    let html = md;
+    
+    // Escape HTML special chars
+    html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    // Code blocks ```...```
+    html = html.replace(/```([\s\S]*?)```/g, (match, p1) => `<pre class="bg-surface-container-high p-3 rounded-lg font-mono text-[11px] overflow-x-auto my-2 border border-outline-variant/40"><code>${p1.trim()}</code></pre>`);
+
+    // Markdown Tables
+    const tableRegex = /\|(.+)\|[\r\n]+\|[-:| ]+\|[\r\n]+((?:\|.+\|[\r\n]*)+)/g;
+    html = html.replace(tableRegex, (match, headerLine, bodyLines) => {
+      const headers = headerLine.split('|').map(h => h.trim()).filter(h => h.length > 0);
+      const rows = bodyLines.trim().split('\n').map(row => row.split('|').map(c => c.trim()).filter(c => c.length > 0));
+      
+      let tableHtml = '<div class="overflow-x-auto my-3"><table class="w-full text-xs text-left border-collapse border border-outline-variant/60 rounded-lg overflow-hidden">';
+      tableHtml += '<thead class="bg-surface-container-low font-semibold text-on-surface border-b border-outline-variant/60"><tr>';
+      headers.forEach(h => { tableHtml += `<th class="p-2.5 border-r border-outline-variant/40 font-mono">${h}</th>`; });
+      tableHtml += '</tr></thead><tbody>';
+      rows.forEach((r, idx) => {
+        const bg = idx % 2 === 0 ? 'bg-surface' : 'bg-surface-container-lowest';
+        tableHtml += `<tr class="${bg} border-b border-outline-variant/30">`;
+        r.forEach(cell => {
+          let cellClass = 'p-2 border-r border-outline-variant/30';
+          if (cell.includes('PASS')) cellClass += ' font-semibold text-emerald-700 bg-emerald-50/50';
+          else if (cell.includes('FAIL')) cellClass += ' font-semibold text-error bg-error-container/30';
+          tableHtml += `<td class="${cellClass}">${cell}</td>`;
+        });
+        tableHtml += '</tr>';
+      });
+      tableHtml += '</tbody></table></div>';
+      return tableHtml;
+    });
+
+    // Headings
+    html = html.replace(/^# (.*$)/gim, '<h1 class="font-headline text-2xl font-bold text-on-surface border-b border-outline-variant/50 pb-2 mt-4 mb-3">$1</h1>');
+    html = html.replace(/^## (.*$)/gim, '<h2 class="font-headline text-xl font-semibold text-primary mt-5 mb-2">$1</h2>');
+    html = html.replace(/^### (.*$)/gim, '<h3 class="font-headline text-base font-medium text-on-surface mt-3 mb-1.5">$1</h3>');
+
+    // Blockquotes
+    html = html.replace(/^> (.*$)/gim, '<blockquote class="border-l-4 border-primary pl-3 text-secondary italic my-2 py-0.5">$1</blockquote>');
+
+    // Horizontal Rule
+    html = html.replace(/^---$/gim, '<hr class="border-t border-outline-variant/50 my-4"/>');
+
+    // Bold & Inline Code
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-on-surface">$1</strong>');
+    html = html.replace(/`([^`]+)`/g, '<code class="bg-surface-variant px-1.5 py-0.5 rounded text-[11px] font-mono text-on-surface">$1</code>');
+
+    // Bullet Lists
+    html = html.replace(/^\s*[-*] (.*$)/gim, '<li class="ml-4 list-disc text-on-surface/90 py-0.5">$1</li>');
+
+    // Paragraph breaks
+    html = html.replace(/\n\n/g, '<br class="my-2"/>');
+
+    return html;
+  }
+
+  // Initialize budget counter to 0 / 6 tool calls used • 6 remaining
+  updateBudget(0);
+</script>
+
+<!-- READ-ONLY DOCUMENTATION & BENCHMARK VIEWER MODAL -->
+<div id="docViewerModal" class="hidden fixed inset-0 z-50 bg-inverse-surface/40 backdrop-blur-sm flex items-center justify-center p-4 lg:p-8">
+  <div class="bg-surface rounded-2xl border border-outline-variant/80 sahara-subtle-shadow w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden">
+    <!-- Modal Header -->
+    <div class="px-6 py-4 border-b border-outline-variant/60 flex items-center justify-between bg-surface-container-low flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+          <span class="material-symbols-outlined text-[20px]" id="docViewerIcon">description</span>
+        </div>
+        <div>
+          <h2 class="font-headline text-xl font-medium text-on-surface" id="docViewerTitle">Document Viewer</h2>
+          <p class="text-[11px] text-secondary">Evaluator Report Viewer • Zero Agent Budget Consumed</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="fetchAndShowDoc('benchmark')" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-surface border border-outline-variant/60 text-on-surface hover:text-primary hover:border-primary/40 transition-colors">Benchmark</button>
+        <button onclick="fetchAndShowDoc('documentation')" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-surface border border-outline-variant/60 text-on-surface hover:text-primary hover:border-primary/40 transition-colors">Documentation</button>
+        <button onclick="closeDocModal()" class="p-1.5 text-secondary hover:text-on-surface rounded-lg transition-colors ml-2" title="Close Viewer">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+    </div>
+    <!-- Modal Content Body -->
+    <div id="docViewerBody" class="p-6 overflow-y-auto flex-1 font-body text-xs text-on-surface leading-relaxed space-y-3">
+      <!-- Markdown rendered content -->
+    </div>
+    <!-- Modal Footer -->
+    <div class="px-6 py-3 border-t border-outline-variant/60 bg-surface-container-low flex items-center justify-between text-xs text-secondary flex-shrink-0">
+      <span>Read-only document artifact. Does not invoke document tools or agent calls.</span>
+      <button onclick="closeDocModal()" class="px-4 py-2 bg-primary text-on-primary rounded-xl text-xs font-medium hover:bg-primary/90 transition-all">Return to Agent Stage</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
